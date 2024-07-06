@@ -12,6 +12,8 @@ using namespace std;
 #include "included/renderer.hpp"
 #include "included/app.hpp"
 
+bool allowed_to_continue = false;
+
 void initialize_app(){
 
 	gfxInitDefault();
@@ -33,17 +35,17 @@ void initialize_app(){
 	DEBUG::print_to_Screen(colored_text("red", "bold", "Initializing Tello API...\n"), false, GFX_BOTTOM);
 	DEBUG::print_to_Screen(colored_text("green", "", "Tello API Initialized\n"), false, GFX_BOTTOM);
 	DEBUG::print_to_Screen(colored_text("yellow", "", "--------------------------------\n"), false, GFX_BOTTOM);
-	DEBUG::print_to_Screen(("Local IP: " + string(NETWORK_FUNCTIONS::get_local_ip()) + "\n").c_str(), false, GFX_BOTTOM);
-	DEBUG::print_to_Screen(("Local Port: " + string("8889") + "\n").c_str(), false, GFX_BOTTOM);
-	DEBUG::print_to_Screen(colored_text("yellow", "", "--------------------------------\n"), false, GFX_BOTTOM);
 	DEBUG::print_to_Screen(("Tello IP: " + string(tello_ip) + "\n").c_str(), false, GFX_BOTTOM);
 	DEBUG::print_to_Screen(("Tello Port: " + string(tello_port) + "\n").c_str(), false, GFX_BOTTOM);
 	DEBUG::print_to_Screen(colored_text("yellow", "", "--------------------------------\n"), false, GFX_BOTTOM);
-	//---------------------------------------------
-
 	// Test connection block ----------------------
 	NETWORK_FUNCTIONS::initialize_network();
-	//NETWORK_FUNCTIONS::network_ping(tello_ip, tello_port);
+	std::string system_ip_str = NETWORK_FUNCTIONS::retrieve_ip_address_alternative();
+	const char* system_ip = system_ip_str.c_str();
+	//---------------------------------------------
+	DEBUG::print_to_Screen(("Local IP: " + string(system_ip) + "\n").c_str(), false, GFX_BOTTOM);
+	DEBUG::print_to_Screen(("Local Port: " + string("8889") + "\n").c_str(), false, GFX_BOTTOM);
+	DEBUG::print_to_Screen(colored_text("yellow", "", "--------------------------------\n"), false, GFX_BOTTOM);
 	//---------------------------------------------
 
 	//Load the launcher screen---------------------
@@ -51,7 +53,24 @@ void initialize_app(){
 	//---------------------------------------------
 
 	//Set up a connection to the Tello-------------
+
+	//---------------------------------------------
+
 	
+	//Setup complete-------------------------------
+	if (initialized_network && ping_successfull && got_device_ip) {
+
+		allowed_to_continue = true;
+
+		DEBUG::print_to_Screen(colored_text("green", "", "Setup complete\n"), false, GFX_BOTTOM);
+		DEBUG::print_to_Screen(colored_text("white", "", "Press A to start\n"), false, GFX_BOTTOM);
+		DEBUG::print_to_Screen(colored_text("yellow", "", "--------------------------------\n"), false, GFX_BOTTOM);
+	}
+	else {
+		DEBUG::print_to_Screen(colored_text("red", "", "Setup incomplete\n"), false, GFX_BOTTOM);
+		DEBUG::print_to_Screen(colored_text("white", "", "Press START to exit\n"), false, GFX_BOTTOM);
+		DEBUG::print_to_Screen(colored_text("yellow", "", "--------------------------------\n"), false, GFX_BOTTOM);
+	}
 	//---------------------------------------------
 }
 
@@ -69,8 +88,17 @@ int main(int argc, char* argv[])
 
 		// Your code goes here
 		u32 kDown = hidKeysDown();
-		if (kDown & KEY_START)
-			break; // break in order to return to hbmenu
+		if (!allowed_to_continue){
+			if (kDown & KEY_START)
+				break; // break in order to return to hbmenu
+		}
+		else{
+			if (kDown & KEY_A){
+				DEBUG::print_to_Screen(colored_text("green", "bold", "Starting...\n"), false, GFX_BOTTOM);
+				DEBUG::print_to_Screen(colored_text("yellow", "", "--------------------------------\n"), false, GFX_BOTTOM);
+			}
+		}
+		
 
 		LAUNCHER::render_launcher_background(GFX_TOP);
 	}

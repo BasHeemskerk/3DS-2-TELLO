@@ -28,6 +28,11 @@ using namespace std;
 #include "included/network.hpp"
 #include "included/app.hpp"
 
+int socket_FD;
+bool initialized_network = false;
+bool ping_successfull = false;
+bool got_device_ip = false;
+
 namespace NETWORK{
     #define SOC_ALIGN       0x1000
     #define SOC_BUFFERSIZE  0x100000
@@ -58,6 +63,8 @@ namespace NETWORK{
             DEBUG::print_to_Screen(colored_text("yellow", "", "--------------------------------\n"), false, GFX_BOTTOM);
 
             NETWORK_FUNCTIONS::network_ping(tello_ip, tello_port);
+
+            initialized_network = true;
 
             return true;
         }
@@ -111,13 +118,16 @@ namespace NETWORK{
 
         if (received < 0) {
             // Timeout or error
-            close(udpSocket);
+            //close(udpSocket);
             return false;
         }
 
         // Optionally, check the content of the response here
 
-        close(udpSocket);
+        //close(udpSocket);
+
+        ping_successfull = true;
+
         return true; // Response received
     }
 }
@@ -167,10 +177,51 @@ namespace NETWORK_FUNCTIONS{
         }
     }
 
-    char *get_local_ip(){
-        u32 ip = gethostid();
-        char *ip_str = new char[16];
-        snprintf(ip_str, 16, "%d.%d.%d.%d", (ip >> 24) & 0xFF, (ip >> 16) & 0xFF, (ip >> 8) & 0xFF, ip & 0xFF);
-        return ip_str;
+    // Adjusted retrieve_ip_address function to use SOCU_IPInfo
+    std::string retrieve_ip_address_alternative() {
+        DEBUG::print_to_Screen(colored_text("green", "", "Getting device IP\n"), false, GFX_BOTTOM);
+        int temp_sock = socket(AF_INET, SOCK_DGRAM, 0); // Create a dummy UDP socket
+        if (temp_sock == -1) {
+            perror("socket creation failed");
+            return "Unknown";
+        }
+
+        struct sockaddr_in serv_addr;
+        memset(&serv_addr, 0, sizeof(serv_addr));
+        serv_addr.sin_family = AF_INET;
+        serv_addr.sin_port = htons(80); // HTTP port, could be any
+        inet_pton(AF_INET, "8.8.8.8", &serv_addr.sin_addr); // Google's DNS, doesn't need to be reachable
+
+        // Connect to the dummy address
+        if (connect(temp_sock, (const struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1) {
+            perror("connect failed");
+            close(temp_sock);
+            DEBUG::print_to_Screen(colored_text("red", "", "Failed\n"), false, GFX_BOTTOM);
+            DEBUG::print_to_Screen(colored_text("yellow", "", "--------------------------------\n"), false, GFX_BOTTOM);
+            return "Unknown";
+        }
+
+        struct sockaddr_in localAddr;
+        socklen_t addrLen = sizeof(localAddr);
+        memset(&localAddr, 0, sizeof(localAddr));
+
+        // Now get the local IP
+        if (getsockname(temp_sock, (struct sockaddr*)&localAddr, &addrLen) == -1) {
+            perror("getsockname failed");
+            close(temp_sock);
+            DEBUG::print_to_Screen(colored_text("red", "", "Failed\n"), false, GFX_BOTTOM);
+            DEBUG::print_to_Screen(colored_text("yellow", "", "--------------------------------\n"), false, GFX_BOTTOM);
+            return "Unknown";
+        }
+
+        close(temp_sock); // Close the dummy socket
+
+        got_device_ip = true;
+
+        DEBUG::print_to_Screen(colored_text("green", "", "Successfull\n"), false, GFX_BOTTOM);
+        DEBUG::print_to_Screen(colored_text("yellow", "", "--------------------------------\n"), false, GFX_BOTTOM);
+
+        char* ipStr = inet_ntoa(localAddr.sin_addr);
+        return std::string(ipStr);
     }
 }

@@ -10,7 +10,7 @@ def log_message(message, addr):
     logging.info(log_entry)
     print(log_entry)
 
-def ping_pong_server(host='192.168.101.116', port=8889):
+def ping_pong_server(host='192.168.149.132', port=8889):
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
         s.bind((host, port))
         print(f"Server listening on {host}:{port}")
